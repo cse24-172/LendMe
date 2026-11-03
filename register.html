@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create account | Lendme</title>
+<link rel="icon" href="logo.svg">
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-page="register">
+<header class="top">
+  <a class="logo" href="index.html"><img src="logo.svg" alt="" width="28" height="28"> Lendme</a>
+  <nav id="nav"></nav>
+</header>
+<main class="narrow">
+<h1>Create your account</h1>
+<form id="registerForm" class="form">
+  <label for="name">Full name</label>
+  <input id="name" required autocomplete="name">
+  <label for="email">Email</label>
+  <input id="email" type="email" required autocomplete="email">
+  <label for="password">Password (8 or more characters)</label>
+  <input id="password" type="password" minlength="8" required autocomplete="new-password">
+  <label for="institution">Institution</label>
+  <input id="institution" placeholder="Your college or university" required>
+  <button class="btn solid" type="submit">Create account</button>
+  <p id="msg" class="msg" role="alert"></p>
+</form>
+<p>Already have an account? <a href="login.html">Log in</a></p>
+</main>
+<footer><strong>Lendme</strong> &middot; Study now. Pay back later.<br><small>Contact: <a href="mailto:lendme@gmail.com">lendme@gmail.com</a> &middot; &copy; 2026 Lendme. Concept project.</small></footer>
+<script src="config.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

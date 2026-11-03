@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apply | Lendme</title>
+<link rel="icon" href="logo.svg">
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-page="apply">
+<header class="top">
+  <a class="logo" href="index.html"><img src="logo.svg" alt="" width="28" height="28"> Lendme</a>
+  <nav id="nav"></nav>
+</header>
+<main class="narrow">
+<h1>Loan application</h1>
+<p class="note">Upload PDF, JPG or PNG files, up to 5 MB each. Interest is 30% per year.</p>
+<form id="applyForm" class="form">
+  <h2>1. Documents</h2>
+  <label for="d1">Student ID</label>
+  <input id="d1" type="file" accept=".pdf,.jpg,.jpeg,.png" required>
+  <label for="d2">Proof of registration</label>
+  <input id="d2" type="file" accept=".pdf,.jpg,.jpeg,.png" required>
+  <label for="d3">Results</label>
+  <input id="d3" type="file" accept=".pdf,.jpg,.jpeg,.png" required>
+  <label for="d4">Bank statement</label>
+  <input id="d4" type="file" accept=".pdf,.jpg,.jpeg,.png" required>
+  <h2>2. Amount</h2>
+  <label for="amount">Amount requested (BWP, minimum 100)</label>
+  <input id="amount" type="number" min="100" step="50" required>
+  <h2>3. Sign</h2>
+  <label for="sig">Type your full name exactly as on your account</label>
+  <input id="sig" required>
+  <label class="check"><input type="checkbox" required> I confirm the information is correct.</label>
+  <button class="btn solid" type="submit">Submit application</button>
+  <p id="msg" class="msg" role="alert"></p>
+</form>
+</main>
+<footer><strong>Lendme</strong> &middot; Study now. Pay back later.<br><small>Contact: <a href="mailto:lendme@gmail.com">lendme@gmail.com</a> &middot; &copy; 2026 Lendme. Concept project.</small></footer>
+<script src="config.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
