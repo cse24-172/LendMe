@@ -73,6 +73,7 @@
       if (!u) return derr(401, "Please log in.");
 
       if (path === "/api/applications" && m === "POST") {
+        if (u.role === "STAFF") return derr(403, "Staff cannot apply for loans.");
         var fd = opts.body, amount = parseFloat(fd.get("amount")), sig = String(fd.get("signedName") || "").trim();
         if (!(amount >= 100)) return derr(400, "The minimum amount is BWP 100.");
         if (sig.toLowerCase() !== u.fullName.toLowerCase()) return derr(400, "Your signature must match your account name.");
@@ -140,7 +141,7 @@
   if (nav) {
     var links = [["calculator.html", "Calculator"], ["about.html", "About"]];
     if (me) {
-      links = [["dashboard.html", "Dashboard"], ["apply.html", "Apply"]].concat(me.role === "STAFF" ? [["admin.html", "Staff"]] : [], links);
+      links = (me.role === "STAFF" ? [["admin.html", "Applications"]] : [["dashboard.html", "Dashboard"], ["apply.html", "Apply"]]).concat(links);
     } else { links = links.concat([["login.html", "Log in"]]); }
     links.forEach(function (l) { var a = h("a", l[1]); a.href = l[0]; nav.appendChild(a); });
     var last = h("a", me ? "Log out" : "Sign up"); last.href = me ? "#" : "register.html"; if (!me) last.className = "pill";
@@ -149,6 +150,7 @@
   }
 
   if ((page === "apply" || page === "dashboard") && !me) { location.href = "login.html"; return; }
+  if ((page === "apply" || page === "dashboard") && me && me.role === "STAFF") { location.href = "admin.html"; return; }
   if (page === "admin" && (!me || me.role !== "STAFF")) { location.href = "login.html"; return; }
 
   if (page === "register") {
@@ -249,4 +251,4 @@
     };
   }
 })();
-          
+  
