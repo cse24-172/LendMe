@@ -13,11 +13,111 @@
   function h(tag, text, cls) { var n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (cls) n.className = cls; return n; }
   function money(v) { return "BWP " + Number(v).toFixed(2); }
 
+
+  // ---------- Demo mode (GitHub Pages has no server) ----------
+  // On github.io the site runs a small in-browser version of the backend.
+  // Data stays in this browser only and files are not uploaded.
+  var DEMO = window.LENDME_DEMO === true || (!API && /github\.io$/.test(location.hostname));
+  var DK = "lendme_demo_db";
+  function ddb() { try { return JSON.parse(localStorage.getItem(DK)) || { users: [], apps: [], n: 1 }; } catch (e) { return { users: [], apps: [], n: 1 }; } }
+  function dsave(d) { try { localStorage.setItem(DK, JSON.stringify(d)); } catch (e) {} }
+  function sha(t) {
+    return crypto.subtle.digest("SHA-256", new TextEncoder().encode("lendme:" + t)).then(function (b) {
+      return Array.prototype.map.call(new Uint8Array(b), function (x) { return ("0" + x.toString(16)).slice(-2); }).join("");
+    });
+  }
+  function dres(status, body) {
+    return { ok: status < 300, status: status,
+      json: function () { return Promise.resolve(body); },
+      text: function () { return Promise.resolve(JSON.stringify(body)); },
+      blob: function () { return Promise.resolve(new Blob([(body && body.text) || ""], { type: "text/plain" })); } };
+  }
+  function derr(status, msg) { return dres(status, { message: msg }); }
+  function dpub(u) { return { id: u.id, fullName: u.fullName, email: u.email, institution: u.institution, role: u.role }; }
+  function dwho(d) {
+    var t = token(); if (!t || t.indexOf("demo:") !== 0) return null;
+    return d.users.filter(function (u) { return u.email === t.slice(5); })[0] || null;
+  }
+  function ensureStaff() {
+    var d = ddb();
+    if (d.users.some(function (u) { return u.role === "STAFF"; })) return Promise.resolve();
+    return sha("StaffPass123").then(function (h) {
+      d.users.push({ id: d.n++, fullName: "Lendme Staff", email: "staff@lendme.test", institution: "Lendme", role: "STAFF", hash: h });
+      dsave(d);
+    });
+  }
+  function demoFetch(path, opts) {
+    return ensureStaff().then(function () {
+      var m = (opts.method || "GET").toUpperCase(), d = ddb(), body = null, u = dwho(d), mt;
+      if (typeof opts.body === "string") { try { body = JSON.parse(opts.body); } catch (e) { body = {}; } }
+
+      if (path === "/api/auth/register" && m === "POST") {
+        var email = String(body.email || "").trim().toLowerCase();
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || String(body.password || "").length < 8 || !String(body.fullName || "").trim() || !String(body.institution || "").trim())
+          return derr(400, "Validation failed");
+        if (d.users.some(function (x) { return x.email === email; })) return derr(409, "An account with this email already exists.");
+        return sha(body.password).then(function (h) {
+          var nu = { id: d.n++, fullName: body.fullName.trim(), email: email, institution: body.institution.trim(), role: "STUDENT", hash: h };
+          d.users.push(nu); dsave(d);
+          return dres(201, { token: "demo:" + email, user: dpub(nu) });
+        });
+      }
+      if (path === "/api/auth/login" && m === "POST") {
+        var em = String(body.email || "").trim().toLowerCase();
+        var found = d.users.filter(function (x) { return x.email === em; })[0];
+        return sha(String(body.password || "")).then(function (h) {
+          if (!found || found.hash !== h) return derr(401, "Wrong email or password.");
+          return dres(200, { token: "demo:" + em, user: dpub(found) });
+        });
+      }
+      if (!u) return derr(401, "Please log in.");
+
+      if (path === "/api/applications" && m === "POST") {
+        var fd = opts.body, amount = parseFloat(fd.get("amount")), sig = String(fd.get("signedName") || "").trim();
+        if (!(amount >= 100)) return derr(400, "The minimum amount is BWP 100.");
+        if (sig.toLowerCase() !== u.fullName.toLowerCase()) return derr(400, "Your signature must match your account name.");
+        var types = [["studentId", "STUDENT_ID"], ["proofOfRegistration", "PROOF_OF_REGISTRATION"], ["results", "RESULTS"], ["bankStatement", "BANK_STATEMENT"]];
+        var docs = [];
+        for (var i = 0; i < types.length; i++) {
+          var f = fd.get(types[i][0]);
+          if (!f || !f.size) return derr(400, "Each document must be a PDF, JPG or PNG file.");
+          if (f.size > 5 * 1024 * 1024) return derr(413, "A file is too big.");
+          docs.push({ id: d.n++, type: types[i][1], fileName: f.name });
+        }
+        var a = { id: d.n++, studentName: u.fullName, studentEmail: u.email, amount: amount, status: "PENDING", signedName: sig, submittedAt: new Date().toISOString(), documents: docs };
+        d.apps.unshift(a); dsave(d);
+        return dres(201, a);
+      }
+      if (path === "/api/applications/me" && m === "GET") {
+        return dres(200, d.apps.filter(function (x) { return x.studentEmail === u.email; }));
+      }
+      if (path.indexOf("/api/admin/") === 0) {
+        if (u.role !== "STAFF") return derr(403, "Staff only.");
+        if (path === "/api/admin/applications" && m === "GET") return dres(200, d.apps);
+        if ((mt = path.match(/^\/api\/admin\/applications\/(\d+)\/status$/)) && m === "PATCH") {
+          var ap = d.apps.filter(function (x) { return x.id === parseInt(mt[1], 10); })[0];
+          if (!ap) return derr(404, "Application not found.");
+          ap.status = body.status; dsave(d); return dres(200, ap);
+        }
+        if (path.indexOf("/api/admin/documents/") === 0) return dres(200, { text: "Demo mode: documents are not stored. Run the full backend to keep real files." });
+      }
+      return derr(404, "Not found.");
+    });
+  }
+  if (DEMO) {
+    document.addEventListener("DOMContentLoaded", function () {
+      var b = document.createElement("div");
+      b.textContent = "Demo mode: your data stays in this browser and files are not uploaded.";
+      b.style.cssText = "background:#fff0c2;color:#6b4e00;text-align:center;padding:6px 12px;font-size:.85rem;font-family:system-ui,Arial,sans-serif";
+      document.body.insertBefore(b, document.body.firstChild);
+    });
+  }
+
   function api(path, opts) {
     opts = opts || {}; opts.headers = opts.headers || {};
     var t = token(); if (t) opts.headers["Authorization"] = "Bearer " + t;
-    return fetch(API + path, opts).then(function (r) {
-      if (r.status === 401 && t) { clear(); location.href = "login.html"; throw new Error("Please log in again."); }
+    return (DEMO ? demoFetch(path, opts) : fetch(API + path, opts)).then(function (r) {
+      if (r.status === 401 && t && path.indexOf("/api/auth/") !== 0) { clear(); location.href = "login.html"; throw new Error("Please log in again."); }
       if (r.ok) return r;
       return r.text().then(function (tx) {
         var m = "Something went wrong (" + r.status + ").";
@@ -149,3 +249,4 @@
     };
   }
 })();
+          
